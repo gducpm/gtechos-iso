@@ -1,72 +1,84 @@
 # ---- Variables ----
 CC       ?= i686-elf-gcc
 LD       ?= i686-elf-ld
+AS       = nasm
 
-CFLAGS   := -m32 -ffreestanding -O2 -Wall -Wextra -fno-builtin -fno-exceptions
-LDFLAGS  := -m elf_i386 -T
+CFLAGS   := -m32 -ffreestanding -Wall -Wextra -O2 -Isrc/kernel
+LDFLAGS  := -T src/kernel/linker.ld -m elf_i386
 
-KERNEL_NAME := gtkern.bin
-GRUB_NAME   := grub.cfg
-LINKER_NAME := linker.ld
-ISO_NAME    := gtechos.iso
-
-SRCDIR   := src
 BUILDDIR := build
-ISO_DIR  := girootfs
-BOOT_DIR := $(ISO_DIR)/boot
-GRUB_DIR := $(BOOT_DIR)/grub
+ISO      := $(BUILDDIR)/gtechos.iso
+KERNEL   := $(BUILDDIR)/gtkern.bin
 
-KERNEL_SRCDIR := $(SRCDIR)/kernel
-BOOTLOADER_SRCDIR := $(SRCDIR)/bootloader
+# Object files
+OBJ      := $(BUILDDIR)/start.o $(BUILDDIR)/gtkern.o $(BUILDDIR)/gdt.o $(BUILDDIR)/gdt_flush.o $(BUILDDIR)/isr.o $(BUILDDIR)/idt_stubs.o $(BUILDDIR)/isr_common_stub.o
 
-KERNEL   := $(BUILDDIR)/$(KERNEL_NAME)
-ISO      := $(BUILDDIR)/$(ISO_NAME)
-
-KERNEL_ISO_FILE := $(BOOT_DIR)/$(KERNEL_NAME)
-GRUB_ISO_FILE   := $(GRUB_DIR)/$(GRUB_NAME)
-
-KERNEL_SRC := $(KERNEL_SRCDIR)/gtkern.c
-GRUB_SRC   := $(BOOTLOADER_SRCDIR)/grub.cfg
-LINKER_SRC := $(KERNEL_SRCDIR)/$(LINKER_NAME)
-OBJ        := $(BUILDDIR)/gtkern.o
+GRUBCFG  := src/bootloader/grub.cfg
+GIROOTFS := girootfs
 
 README   := README.md
-MAKEFILE := Makefile
 LICENSE  := LICENSE
+MAKEFILE := Makefile
 
-# ---- Targets ----
-# I don't like a linked list of targets, really hard to trace.
-all: $(OBJ) $(KERNEL) prepare $(ISO)
 
-$(OBJ): $(KERNEL_SRC)
+# ---- Rules ----
+all: $(ISO)
+
+$(ISO): $(KERNEL) $(GIROOTFS)/boot/grub/grub.cfg
+	@grub-mkrescue -o $(ISO) $(GIROOTFS)
+
+$(KERNEL): $(OBJ)
+	@$(LD) $(LDFLAGS) -o $(KERNEL) $(OBJ)
+	@cp $(KERNEL) $(GIROOTFS)/boot/gtkern.bin
+	@cp $(KERNEL) $(GIROOTFS)/boot/kernel.bin
+
+$(GIROOTFS)/boot/grub/grub.cfg:
+	@mkdir -p $(GIROOTFS)/boot/grub
+	@cp $(GRUBCFG) $@
+
+$(BUILDDIR)/start.o: src/kernel/start.asm
+	@mkdir -p $(BUILDDIR)
+	@$(AS) -f elf32 $< -o $@
+
+$(BUILDDIR)/gtkern.o: src/kernel/gtkern.c
 	@mkdir -p $(BUILDDIR)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(KERNEL): $(OBJ) $(LINKER_SRC)
-	@$(LD) $(LDFLAGS) $(LINKER_SRC) $(OBJ) -o $@
-
-prepare: $(KERNEL) $(GRUB_SRC)
-	@mkdir -p $(GRUB_DIR)
-	@cp $(KERNEL) $(KERNEL_ISO_FILE)
-	@cp $(GRUB_SRC) $(GRUB_ISO_FILE)
-
-$(ISO): prepare
+$(BUILDDIR)/gdt.o: src/kernel/gdt/gdt.c
 	@mkdir -p $(BUILDDIR)
-	@grub-mkrescue -o $(ISO) $(ISO_DIR)
+	@$(CC) $(CFLAGS) -c $< -o $@
 
-run: $(ISO)
-	@qemu-system-i386 -cdrom $(ISO) -m 512
+$(BUILDDIR)/gdt_flush.o: src/kernel/gdt/gdt_flush.asm
+	@mkdir -p $(BUILDDIR)
+	@$(AS) -f elf32 $< -o $@
+
+$(BUILDDIR)/isr.o: src/kernel/isr/isr.c
+	@mkdir -p $(BUILDDIR)
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/idt_stubs.o: src/kernel/isr/idt_stubs.asm
+	@mkdir -p $(BUILDDIR)
+	@$(AS) -f elf32 $< -o $@
+
+$(BUILDDIR)/isr_common_stub.o: src/kernel/isr/isr_common_stub.asm
+	@mkdir -p $(BUILDDIR)
+	@$(AS) -f elf32 $< -o $@
+
+run:
+	@qemu-system-i386 -cdrom $(ISO)
+
 
 clean:
-	@rm -rf $(BUILDDIR) $(KERNEL_ISO_FILE) $(GRUB_ISO_FILE)
+	@rm -rf $(BUILDDIR)
+
 
 help:
-	@less $(README)||more $(README)
+	@less $(README) || more $(README)
+
 
 showmakefile:
-	@less $(MAKEFILE)||more $(MAKEFILE)
+	@less $(MAKEFILE) || more $(MAKEFILE)
+
 
 license:
-	@less $(LICENSE)||more $(LICENSE)
-
-.PHONY: all clean run prepare help showmakefile license
+	@less $(LICENSE) || more $(LICENSE)

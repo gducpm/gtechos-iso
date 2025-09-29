@@ -1,5 +1,3 @@
-ENTRY(_start)
-
 SECTIONS
 {
   /* Load the kernel at 1MB */

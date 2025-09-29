@@ -1,3 +1,7 @@
-V Built my first kernel, printed "GTechOS is live!"
-- Interrupt Descriptor Table (what's that?)
-- something
+X = Complete; . = incomplete/imperfect; - = not yet implemented
+X Built my first kernel, printed "GTechOS is live!"
+    (Using proper i686-elf-* tools and GRUB for bootloader)
+X Interrupt Descriptor Table
+. At least... 8 (imperfect is ok) IDT entries
+    (We got Int 0 working! Rn the handlers are just prints)
+. Load my own GDT
