@@ -1,7 +1,11 @@
-X = Complete; . = incomplete/imperfect; - = not yet implemented
+KERNEL.checklist
+X = Complete; . = incomplete/imperfect; - = not yet implemented; > = being focused on
 X Built my first kernel, printed "GTechOS is live!"
     (Using proper i686-elf-* tools and GRUB for bootloader)
 X Interrupt Descriptor Table
 . At least... 8 (imperfect is ok) IDT entries
-    (We got Int 0 working! Rn the handlers are just prints)
-. Load my own GDT
+    (We got Int 0 working! I haven't got time to test the rest, I need to look back someday. Rn the handlers are just prints)
+X Load my own GDT
+> Programmable Interval Timer
+- Switch to paging
+    (My project needs to grow larger to start this)
